@@ -2,7 +2,7 @@ spring:
   application:
     name: ticket-triage-platform
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ticketdb}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/ticketdb}
     username: ${SPRING_DATASOURCE_USERNAME:ticketuser}
     password: ${SPRING_DATASOURCE_PASSWORD:ticketpass}
     driver-class-name: org.postgresql.Driver
@@ -44,3 +44,38 @@ ticket:
     topics:
       ticket-events: ticket-events
       ticket-events-dlt: ticket-events-dlt
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      llmReplyService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10000ms
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      llmReplyService:
+        max-attempts: 3
+        wait-duration: 500ms
+  bulkhead:
+    instances:
+      llmReplyService:
+        max-concurrent-calls: 10
+        max-wait-duration: 200ms
+  timelimiter:
+    instances:
+      llmReplyService:
+        timeout-duration: 10s
+        cancel-running-future: true
+

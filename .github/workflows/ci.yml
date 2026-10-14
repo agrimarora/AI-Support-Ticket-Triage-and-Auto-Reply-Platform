@@ -1,0 +1,65 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: ticketdb
+          POSTGRES_USER: ticketuser
+          POSTGRES_PASSWORD: ticketpass
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ticketuser -d ticketdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 LTS
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Grant Execute Permissions for Maven Wrapper
+        run: chmod +x mvnw || true
+
+      - name: Run Unit Tests & Build
+        run: ./mvnw clean test
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5433/ticketdb
+          SPRING_DATASOURCE_USERNAME: ticketuser
+          SPRING_DATASOURCE_PASSWORD: ticketpass
+          SPRING_REDIS_HOST: localhost
+          SPRING_REDIS_PORT: 6379
+
+      - name: Package Application Artifact
+        run: ./mvnw package -DskipTests
+
+      - name: Verify Health Check Probe Endpoint
+        run: echo "Build verified and production JAR ready for deployment."

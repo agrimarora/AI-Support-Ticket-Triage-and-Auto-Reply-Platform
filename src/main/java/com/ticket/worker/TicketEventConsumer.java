@@ -34,6 +34,8 @@ public class TicketEventConsumer {
     private final ProcessedEventRepository processedEventRepository;
     private final TicketRepository ticketRepository;
     private final ClassificationWorker classificationWorker;
+    private final com.ticket.domain.ai.RagReplyService ragReplyService;
+    private final com.ticket.web.AgentDashboardController dashboardController;
 
     @RetryableTopic(
             attempts = "3",
@@ -68,13 +70,29 @@ public class TicketEventConsumer {
         ticket.setStatus(TicketStatus.CLASSIFYING);
         ticketRepository.save(ticket);
 
+        // Step 1: Classify Ticket
         ClassificationResultDto classification = classificationWorker.classifyTicket(event);
-
         ticket.setCategory(classification.getCategory());
         ticket.setPriority(classification.getPriority());
         ticket.setConfidenceScore(classification.getConfidenceScore());
         ticket.setStatus(TicketStatus.CLASSIFIED);
         ticketRepository.save(ticket);
+
+        // Step 2: Draft RAG Auto-Reply from Knowledge Base
+        ticket.setStatus(TicketStatus.DRAFTING);
+        com.ticket.domain.ai.RagReplyResult ragResult = ragReplyService.generateRagReply(
+                ticket.getTenantId(), ticket.getId(), ticket.getTitle(), ticket.getDescription());
+
+        ticket.setDraftReply(ragResult.getDraftReply());
+        if (ragResult.getCitedChunkIds() != null && !ragResult.getCitedChunkIds().isEmpty()) {
+            ticket.setCitedChunkIds(ragResult.getCitedChunkIds().toString());
+        }
+        ticket.setRequiresHuman(ragResult.isRequiresHuman());
+        ticket.setStatus(TicketStatus.AWAITING_APPROVAL);
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        // Step 3: Broadcast live update to agent dashboard
+        dashboardController.broadcastTicketUpdate(savedTicket.getTenantId(), savedTicket);
 
         if (event.getEventId() != null) {
             ProcessedEvent processedEvent = ProcessedEvent.builder()
@@ -85,8 +103,8 @@ public class TicketEventConsumer {
             processedEventRepository.save(processedEvent);
         }
 
-        log.info("Successfully classified ticket ID [{}] as category: {}, priority: {}",
-                ticket.getId(), ticket.getCategory(), ticket.getPriority());
+        log.info("Successfully processed ticket ID [{}] (Category: {}, Priority: {}, Awaiting Approval: {})",
+                ticket.getId(), ticket.getCategory(), ticket.getPriority(), ticket.getStatus());
     }
 
     @DltHandler

@@ -48,6 +48,15 @@ public class Ticket {
     @Column(name = "draft_reply", columnDefinition = "TEXT")
     private String draftReply;
 
+    @Column(name = "cited_chunk_ids", columnDefinition = "TEXT")
+    private String citedChunkIds;
+
+    @Column(name = "agent_feedback", columnDefinition = "TEXT")
+    private String agentFeedback;
+
+    @Column(name = "requires_human")
+    private Boolean requiresHuman;
+
     @Column(name = "idempotency_key", length = 128)
     private String idempotencyKey;
 

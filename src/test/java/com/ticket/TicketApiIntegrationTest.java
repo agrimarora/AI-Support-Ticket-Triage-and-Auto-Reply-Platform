@@ -205,13 +205,14 @@ public class TicketApiIntegrationTest {
         // Trigger outbox publisher explicitly to dispatch outbox event to Kafka
         outboxPublisherScheduler.publishPendingOutboxEvents();
 
-        // Await Kafka Consumer classification update in DB
-        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+        // Await Kafka Consumer full pipeline: classify → RAG draft → AWAITING_APPROVAL
+        await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> {
             Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
-            assertThat(ticket.getStatus()).isEqualTo(TicketStatus.CLASSIFIED);
+            assertThat(ticket.getStatus()).isEqualTo(TicketStatus.AWAITING_APPROVAL);
             assertThat(ticket.getCategory()).isEqualTo("TECHNICAL_BUG");
             assertThat(ticket.getPriority()).isNotNull();
             assertThat(ticket.getConfidenceScore()).isGreaterThan(0.8);
+            assertThat(ticket.getDraftReply()).isNotNull();
         });
     }
 }

@@ -33,6 +33,8 @@ public class TenantAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.startsWith("/v1/admin/") ||
+               path.startsWith("/v1/dashboard/") ||
+               path.startsWith("/v1/eval/") ||
                path.startsWith("/actuator") ||
                path.startsWith("/swagger-ui") ||
                path.startsWith("/v3/api-docs");

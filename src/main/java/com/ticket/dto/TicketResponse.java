@@ -27,6 +27,9 @@ public class TicketResponse {
     private String category;
     private Double confidenceScore;
     private String draftReply;
+    private String citedChunkIds;
+    private String agentFeedback;
+    private Boolean requiresHuman;
     private String idempotencyKey;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
@@ -43,6 +46,9 @@ public class TicketResponse {
                 .category(ticket.getCategory())
                 .confidenceScore(ticket.getConfidenceScore())
                 .draftReply(ticket.getDraftReply())
+                .citedChunkIds(ticket.getCitedChunkIds())
+                .agentFeedback(ticket.getAgentFeedback())
+                .requiresHuman(ticket.getRequiresHuman())
                 .idempotencyKey(ticket.getIdempotencyKey())
                 .createdAt(ticket.getCreatedAt())
                 .updatedAt(ticket.getUpdatedAt())
